@@ -22,13 +22,13 @@ func TestOrgs(t *testing.T) {
 	t.Parallel()
 
 	tables := []any{new(User), new(EmailAddress), new(OrgUser)}
-	db := &orgs{
+	db := &organizations{
 		DB: dbtest.NewDB(t, "orgs", tables...),
 	}
 
 	for _, tc := range []struct {
 		name string
-		test func(t *testing.T, db *orgs)
+		test func(t *testing.T, db *organizations)
 	}{
 		{"List", orgsList},
 		{"SearchByName", orgsSearchByName},
@@ -47,7 +47,7 @@ func TestOrgs(t *testing.T) {
 	}
 }
 
-func orgsList(t *testing.T, db *orgs) {
+func orgsList(t *testing.T, db *organizations) {
 	ctx := context.Background()
 
 	usersStore := NewUsersStore(db.DB)
@@ -77,12 +77,12 @@ func orgsList(t *testing.T, db *orgs) {
 
 	tests := []struct {
 		name         string
-		opts         ListOrgsOptions
+		opts         ListOrganizationsOptions
 		wantOrgNames []string
 	}{
 		{
 			name: "only public memberships for a user",
-			opts: ListOrgsOptions{
+			opts: ListOrganizationsOptions{
 				MemberID:              alice.ID,
 				IncludePrivateMembers: false,
 			},
@@ -90,7 +90,7 @@ func orgsList(t *testing.T, db *orgs) {
 		},
 		{
 			name: "all memberships for a user",
-			opts: ListOrgsOptions{
+			opts: ListOrganizationsOptions{
 				MemberID:              alice.ID,
 				IncludePrivateMembers: true,
 			},
@@ -98,7 +98,7 @@ func orgsList(t *testing.T, db *orgs) {
 		},
 		{
 			name: "no membership for a non-existent user",
-			opts: ListOrgsOptions{
+			opts: ListOrganizationsOptions{
 				MemberID:              404,
 				IncludePrivateMembers: true,
 			},
@@ -119,7 +119,7 @@ func orgsList(t *testing.T, db *orgs) {
 	}
 }
 
-func orgsSearchByName(t *testing.T, db *orgs) {
+func orgsSearchByName(t *testing.T, db *organizations) {
 	ctx := context.Background()
 
 	// TODO: Use Orgs.Create to replace SQL hack when the method is available.
@@ -166,7 +166,7 @@ func orgsSearchByName(t *testing.T, db *orgs) {
 	})
 }
 
-func orgsCountByUser(t *testing.T, db *orgs) {
+func orgsCountByUser(t *testing.T, db *organizations) {
 	ctx := context.Background()
 
 	// TODO: Use Orgs.Join to replace SQL hack when the method is available.

@@ -302,7 +302,7 @@ func usersChangeUsername(t *testing.T, db *users) {
 	require.NoError(t, err)
 	defer func() { _ = os.RemoveAll(tempServerAppDataPath) }()
 
-	repo, err := NewReposStore(db.DB).Create(
+	repo, err := NewRepositoriesStore(db.DB).Create(
 		ctx,
 		alice.ID,
 		CreateRepoOptions{
@@ -481,7 +481,7 @@ func usersDeleteCustomAvatar(t *testing.T, db *users) {
 
 func usersDeleteByID(t *testing.T, db *users) {
 	ctx := context.Background()
-	reposStore := NewReposStore(db.DB)
+	reposStore := NewRepositoriesStore(db.DB)
 
 	t.Run("user still has repository ownership", func(t *testing.T) {
 		alice, err := db.Create(ctx, "alice", "alice@exmaple.com", CreateUserOptions{})
@@ -696,7 +696,7 @@ func usersDeleteInactivated(t *testing.T, db *users) {
 	// User with repository ownership should be skipped
 	alice, err := db.Create(ctx, "alice", "alice@exmaple.com", CreateUserOptions{})
 	require.NoError(t, err)
-	reposStore := NewReposStore(db.DB)
+	reposStore := NewRepositoriesStore(db.DB)
 	_, err = reposStore.Create(ctx, alice.ID, CreateRepoOptions{Name: "repo1"})
 	require.NoError(t, err)
 
@@ -833,7 +833,7 @@ func usersGetByUsername(t *testing.T, db *users) {
 	})
 
 	t.Run("wrong user type", func(t *testing.T) {
-		// org1,err:=NewOrgsStore(db.DB).Create(ctx,"org1","// TODO: Use Orgs.Create
+		// org1,err:=NewOrganizationsStore(db.DB).Create(ctx,"org1","// TODO: Use Orgs.Create
 	})
 }
 

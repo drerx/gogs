@@ -86,13 +86,13 @@ func TestRepos(t *testing.T) {
 	t.Parallel()
 
 	tables := []any{new(Repository), new(Access), new(Watch), new(User), new(EmailAddress), new(Star)}
-	db := &repos{
+	db := &repositories{
 		DB: dbtest.NewDB(t, "repos", tables...),
 	}
 
 	for _, tc := range []struct {
 		name string
-		test func(t *testing.T, db *repos)
+		test func(t *testing.T, db *repositories)
 	}{
 		{"Create", reposCreate},
 		{"GetByCollaboratorID", reposGetByCollaboratorID},
@@ -118,7 +118,7 @@ func TestRepos(t *testing.T) {
 	}
 }
 
-func reposCreate(t *testing.T, db *repos) {
+func reposCreate(t *testing.T, db *repositories) {
 	ctx := context.Background()
 
 	t.Run("name not allowed", func(t *testing.T) {
@@ -145,7 +145,7 @@ func reposCreate(t *testing.T, db *repos) {
 				Name: "repo1",
 			},
 		)
-		wantErr := ErrRepoAlreadyExist{args: errutil.Args{"ownerID": int64(2), "name": "repo1"}}
+		wantErr := ErrRepositoryAlreadyExist{args: errutil.Args{"ownerID": int64(2), "name": "repo1"}}
 		assert.Equal(t, wantErr, err)
 	})
 
@@ -162,7 +162,7 @@ func reposCreate(t *testing.T, db *repos) {
 	assert.Equal(t, 1, repo.NumWatches) // The owner is watching the repo by default.
 }
 
-func reposGetByCollaboratorID(t *testing.T, db *repos) {
+func reposGetByCollaboratorID(t *testing.T, db *repositories) {
 	ctx := context.Background()
 
 	repo1, err := db.Create(ctx, 1, CreateRepoOptions{Name: "repo1"})
@@ -190,7 +190,7 @@ func reposGetByCollaboratorID(t *testing.T, db *repos) {
 	})
 }
 
-func reposGetByCollaboratorIDWithAccessMode(t *testing.T, db *repos) {
+func reposGetByCollaboratorIDWithAccessMode(t *testing.T, db *repositories) {
 	ctx := context.Background()
 
 	repo1, err := db.Create(ctx, 1, CreateRepoOptions{Name: "repo1"})
@@ -220,7 +220,7 @@ func reposGetByCollaboratorIDWithAccessMode(t *testing.T, db *repos) {
 	assert.Equal(t, AccessModeAdmin, accessModes[repo2.ID])
 }
 
-func reposGetByID(t *testing.T, db *repos) {
+func reposGetByID(t *testing.T, db *repositories) {
 	ctx := context.Background()
 
 	repo1, err := db.Create(ctx, 1, CreateRepoOptions{Name: "repo1"})
@@ -235,7 +235,7 @@ func reposGetByID(t *testing.T, db *repos) {
 	assert.Equal(t, wantErr, err)
 }
 
-func reposGetByName(t *testing.T, db *repos) {
+func reposGetByName(t *testing.T, db *repositories) {
 	ctx := context.Background()
 
 	repo, err := db.Create(ctx, 1,
@@ -253,7 +253,7 @@ func reposGetByName(t *testing.T, db *repos) {
 	assert.Equal(t, wantErr, err)
 }
 
-func reposStar(t *testing.T, db *repos) {
+func reposStar(t *testing.T, db *repositories) {
 	ctx := context.Background()
 
 	repo1, err := db.Create(ctx, 1, CreateRepoOptions{Name: "repo1"})
@@ -274,7 +274,7 @@ func reposStar(t *testing.T, db *repos) {
 	assert.Equal(t, 1, alice.NumStars)
 }
 
-func reposTouch(t *testing.T, db *repos) {
+func reposTouch(t *testing.T, db *repositories) {
 	ctx := context.Background()
 
 	repo, err := db.Create(ctx, 1,
@@ -302,7 +302,7 @@ func reposTouch(t *testing.T, db *repos) {
 	assert.False(t, got.IsBare)
 }
 
-func reposListWatches(t *testing.T, db *repos) {
+func reposListWatches(t *testing.T, db *repositories) {
 	ctx := context.Background()
 
 	err := db.Watch(ctx, 1, 1)
@@ -325,10 +325,10 @@ func reposListWatches(t *testing.T, db *repos) {
 	assert.Equal(t, want, got)
 }
 
-func reposWatch(t *testing.T, db *repos) {
+func reposWatch(t *testing.T, db *repositories) {
 	ctx := context.Background()
 
-	reposStore := NewReposStore(db.DB)
+	reposStore := NewRepositoriesStore(db.DB)
 	repo1, err := reposStore.Create(ctx, 1, CreateRepoOptions{Name: "repo1"})
 	require.NoError(t, err)
 
@@ -344,13 +344,13 @@ func reposWatch(t *testing.T, db *repos) {
 	assert.Equal(t, 2, repo1.NumWatches) // The owner is watching the repo by default.
 }
 
-func reposHasForkedBy(t *testing.T, db *repos) {
+func reposHasForkedBy(t *testing.T, db *repositories) {
 	ctx := context.Background()
 
 	has := db.HasForkedBy(ctx, 1, 2)
 	assert.False(t, has)
 
-	_, err := NewReposStore(db.DB).Create(
+	_, err := NewRepositoriesStore(db.DB).Create(
 		ctx,
 		2,
 		CreateRepoOptions{
