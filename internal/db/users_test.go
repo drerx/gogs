@@ -379,7 +379,7 @@ func usersCount(t *testing.T, db *users) {
 	got = db.Count(ctx)
 	assert.Equal(t, int64(1), got)
 
-	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "orgsList-tempPictureAvatarUploadPath")
+	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "usersCount-tempPictureAvatarUploadPath")
 	conf.SetMockPicture(t, conf.PictureOpts{AvatarUploadPath: tempPictureAvatarUploadPath})
 
 	// Create an organization shouldn't count
@@ -398,6 +398,9 @@ func usersCreate(t *testing.T, db *users) {
 		"alice",
 		"alice@example.com",
 		CreateUserOptions{
+			FullName:  "Alice Jones",
+			Location:  "Earth",
+			Website:   "alice@example.com",
 			Activated: true,
 		},
 	)
@@ -434,10 +437,14 @@ func usersCreate(t *testing.T, db *users) {
 		assert.Equal(t, wantErr, err)
 	})
 
-	user, err := db.GetByUsername(ctx, alice.Name)
+	got, err := db.GetByUsername(ctx, alice.Name)
 	require.NoError(t, err)
-	assert.Equal(t, db.NowFunc().Format(time.RFC3339), user.Created.UTC().Format(time.RFC3339))
-	assert.Equal(t, db.NowFunc().Format(time.RFC3339), user.Updated.UTC().Format(time.RFC3339))
+	assert.Equal(t, alice.Name, got.Name)
+	assert.Equal(t, alice.FullName, got.FullName)
+	assert.Equal(t, alice.Location, got.Location)
+	assert.Equal(t, alice.Website, got.Website)
+	assert.Equal(t, db.NowFunc().Format(time.RFC3339), got.Created.UTC().Format(time.RFC3339))
+	assert.Equal(t, db.NowFunc().Format(time.RFC3339), got.Updated.UTC().Format(time.RFC3339))
 }
 
 func usersDeleteCustomAvatar(t *testing.T, db *users) {
@@ -449,7 +456,7 @@ func usersDeleteCustomAvatar(t *testing.T, db *users) {
 	avatar, err := public.Files.ReadFile("img/avatar_default.png")
 	require.NoError(t, err)
 
-	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "orgsList-tempPictureAvatarUploadPath")
+	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "usersDeleteCustomAvatar-tempPictureAvatarUploadPath")
 	conf.SetMockPicture(t, conf.PictureOpts{AvatarUploadPath: tempPictureAvatarUploadPath})
 
 	avatarPath := userutil.CustomAvatarPath(alice.ID)
@@ -495,12 +502,12 @@ func usersDeleteByID(t *testing.T, db *users) {
 		assert.Equal(t, wantErr, err)
 	})
 
+	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "usersDeleteByID-tempPictureAvatarUploadPath")
+	conf.SetMockPicture(t, conf.PictureOpts{AvatarUploadPath: tempPictureAvatarUploadPath})
+
 	t.Run("user still has organization membership", func(t *testing.T) {
 		bob, err := db.Create(ctx, "bob", "bob@exmaple.com", CreateUserOptions{})
 		require.NoError(t, err)
-
-		tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "orgsList-tempPictureAvatarUploadPath")
-		conf.SetMockPicture(t, conf.PictureOpts{AvatarUploadPath: tempPictureAvatarUploadPath})
 
 		_, err = NewOrganizationsStore(db.DB).Create(ctx, "org1", bob.ID, CreateOrganizationOptions{})
 		require.NoError(t, err)
@@ -578,8 +585,6 @@ func usersDeleteByID(t *testing.T, db *users) {
 	require.NoError(t, err)
 
 	// Mock user custom avatar
-	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "usersDeleteByID-tempPictureAvatarUploadPath")
-	conf.SetMockPicture(t, conf.PictureOpts{AvatarUploadPath: tempPictureAvatarUploadPath})
 	err = os.MkdirAll(tempPictureAvatarUploadPath, os.ModePerm)
 	require.NoError(t, err)
 	tempCustomAvatarPath := userutil.CustomAvatarPath(testUser.ID)
@@ -697,7 +702,7 @@ func usersDeleteInactivated(t *testing.T, db *users) {
 	bob, err := db.Create(ctx, "bob", "bob@exmaple.com", CreateUserOptions{})
 	require.NoError(t, err)
 
-	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "orgsList-tempPictureAvatarUploadPath")
+	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "usersDeleteInactivated-tempPictureAvatarUploadPath")
 	conf.SetMockPicture(t, conf.PictureOpts{AvatarUploadPath: tempPictureAvatarUploadPath})
 
 	_, err = NewOrganizationsStore(db.DB).Create(ctx, "org1", bob.ID, CreateOrganizationOptions{})
@@ -736,7 +741,7 @@ func usersGetByEmail(t *testing.T, db *users) {
 	})
 
 	t.Run("ignore organization", func(t *testing.T) {
-		tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "orgsList-tempPictureAvatarUploadPath")
+		tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "usersGetByEmail-tempPictureAvatarUploadPath")
 		conf.SetMockPicture(t, conf.PictureOpts{AvatarUploadPath: tempPictureAvatarUploadPath})
 
 		org, err := NewOrganizationsStore(db.DB).Create(ctx, "gogs", 1, CreateOrganizationOptions{Email: "gogs@example.com"})
@@ -820,7 +825,7 @@ func usersGetByUsername(t *testing.T, db *users) {
 	})
 
 	t.Run("wrong user type", func(t *testing.T) {
-		tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "orgsList-tempPictureAvatarUploadPath")
+		tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "usersGetByUsername-tempPictureAvatarUploadPath")
 		conf.SetMockPicture(t, conf.PictureOpts{AvatarUploadPath: tempPictureAvatarUploadPath})
 
 		org1, err := NewOrganizationsStore(db.DB).Create(ctx, "org1", 1, CreateOrganizationOptions{})
@@ -936,7 +941,7 @@ func usersList(t *testing.T, db *users) {
 	require.NoError(t, err)
 
 	// Create an organization shouldn't count
-	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "orgsList-tempPictureAvatarUploadPath")
+	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "usersList-tempPictureAvatarUploadPath")
 	conf.SetMockPicture(t, conf.PictureOpts{AvatarUploadPath: tempPictureAvatarUploadPath})
 
 	_, err = NewOrganizationsStore(db.DB).Create(ctx, "org1", bob.ID, CreateOrganizationOptions{})

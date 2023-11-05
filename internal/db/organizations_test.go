@@ -9,15 +9,17 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"gogs.io/gogs/internal/conf"
 	"gogs.io/gogs/internal/dbtest"
+	"gogs.io/gogs/internal/errutil"
 )
 
-func TestOrgs(t *testing.T) {
+func TestOrganizations(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
@@ -32,6 +34,7 @@ func TestOrgs(t *testing.T) {
 		name string
 		test func(t *testing.T, db *organizations)
 	}{
+		{"Create", orgsCreate},
 		{"List", orgsList},
 		{"SearchByName", orgsSearchByName},
 		{"CountByUser", orgsCountByUser},
@@ -47,6 +50,67 @@ func TestOrgs(t *testing.T) {
 			break
 		}
 	}
+}
+
+func orgsCreate(t *testing.T, db *organizations) {
+	ctx := context.Background()
+
+	usersStore := NewUsersStore(db.DB)
+	alice, err := usersStore.Create(ctx, "alice", "alice@example.com", CreateUserOptions{})
+	require.NoError(t, err)
+
+	t.Run("name not allowed", func(t *testing.T) {
+		_, err := db.Create(ctx, "-", alice.ID, CreateOrganizationOptions{})
+		wantErr := ErrNameNotAllowed{
+			args: errutil.Args{
+				"reason": "reserved",
+				"name":   "-",
+			},
+		}
+		assert.Equal(t, wantErr, err)
+	})
+
+	// Users and organizations share the same namespace for names.
+	t.Run("name already exists", func(t *testing.T) {
+		_, err := db.Create(ctx, alice.Name, alice.ID, CreateOrganizationOptions{})
+		wantErr := ErrOrganizationAlreadyExist{
+			args: errutil.Args{
+				"name": alice.Name,
+			},
+		}
+		assert.Equal(t, wantErr, err)
+	})
+
+	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "orgsCreate-tempPictureAvatarUploadPath")
+	conf.SetMockPicture(t, conf.PictureOpts{AvatarUploadPath: tempPictureAvatarUploadPath})
+
+	org, err := db.Create(
+		ctx,
+		"acme",
+		alice.ID,
+		CreateOrganizationOptions{
+			FullName:    "Acme Corp",
+			Email:       "admin@acme.com",
+			Location:    "Earth",
+			Website:     "acme.com",
+			Description: "A popcorn company",
+		},
+	)
+	require.NoError(t, err)
+
+	got, err := db.GetByName(ctx, org.Name)
+	require.NoError(t, err)
+	assert.Equal(t, org.Name, got.Name)
+	assert.Equal(t, org.FullName, got.FullName)
+	assert.Equal(t, org.Email, got.Email)
+	assert.Equal(t, org.Location, got.Location)
+	assert.Equal(t, org.Website, got.Website)
+	assert.Equal(t, org.Description, got.Description)
+	assert.Equal(t, -1, got.MaxRepoCreation)
+	assert.Equal(t, 1, got.NumTeams)
+	assert.Equal(t, 1, got.NumMembers)
+	assert.Equal(t, db.NowFunc().Format(time.RFC3339), got.Created.UTC().Format(time.RFC3339))
+	assert.Equal(t, db.NowFunc().Format(time.RFC3339), got.Updated.UTC().Format(time.RFC3339))
 }
 
 func orgsList(t *testing.T, db *organizations) {
@@ -119,7 +183,7 @@ func orgsList(t *testing.T, db *organizations) {
 func orgsSearchByName(t *testing.T, db *organizations) {
 	ctx := context.Background()
 
-	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "orgsList-tempPictureAvatarUploadPath")
+	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "orgsSearchByName-tempPictureAvatarUploadPath")
 	conf.SetMockPicture(t, conf.PictureOpts{AvatarUploadPath: tempPictureAvatarUploadPath})
 
 	org1, err := db.Create(ctx, "org1", 1, CreateOrganizationOptions{FullName: "Acme Corp"})
@@ -168,7 +232,7 @@ func orgsCountByUser(t *testing.T, db *organizations) {
 	bob, err := usersStore.Create(ctx, "bob", "bob@example.com", CreateUserOptions{})
 	require.NoError(t, err)
 
-	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "orgsList-tempPictureAvatarUploadPath")
+	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "orgsCountByUser-tempPictureAvatarUploadPath")
 	conf.SetMockPicture(t, conf.PictureOpts{AvatarUploadPath: tempPictureAvatarUploadPath})
 
 	org1, err := db.Create(ctx, "org1", alice.ID, CreateOrganizationOptions{})
