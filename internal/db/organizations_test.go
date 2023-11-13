@@ -39,6 +39,7 @@ func TestOrganizations(t *testing.T) {
 		{"SearchByName", orgsSearchByName},
 		{"List", orgsList},
 		{"CountByUser", orgsCountByUser},
+		{"Count", orgsCount},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Cleanup(func() {
@@ -316,4 +317,24 @@ func orgsCountByUser(t *testing.T, db *organizations) {
 	got, err = db.CountByUser(ctx, 404)
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), got)
+}
+
+func orgsCount(t *testing.T, db *organizations) {
+	ctx := context.Background()
+
+	// Has no organization initially
+	got := db.Count(ctx)
+	assert.Equal(t, int64(0), got)
+
+	tempPictureAvatarUploadPath := filepath.Join(os.TempDir(), "usersCount-tempPictureAvatarUploadPath")
+	conf.SetMockPicture(t, conf.PictureOpts{AvatarUploadPath: tempPictureAvatarUploadPath})
+
+	_, err := db.Create(ctx, "org1", 1, CreateOrganizationOptions{})
+	require.NoError(t, err)
+
+	// Create a user shouldn't count
+	_, err = NewUsersStore(db.DB).Create(ctx, "alice", "alice@example.com", CreateUserOptions{})
+	require.NoError(t, err)
+	got = db.Count(ctx)
+	assert.Equal(t, int64(1), got)
 }
