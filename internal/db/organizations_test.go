@@ -481,11 +481,6 @@ func orgsRemoveMember(t *testing.T, db *organizations) {
 	reposStore := NewRepositoriesStore(db.DB)
 	repo1, err := reposStore.Create(ctx, org1.ID, CreateRepoOptions{Name: "repo1", Private: true})
 	require.NoError(t, err)
-	err = reposStore.Watch(ctx, bob.ID, repo1.ID)
-	require.NoError(t, err)
-	permsStore := NewPermsStore(db.DB)
-	err = permsStore.SetRepoPerms(ctx, repo1.ID, map[int64]AccessMode{bob.ID: AccessModeRead})
-	require.NoError(t, err)
 	// TODO: Use Repositories.AddCollaborator to replace SQL hack when the method is available.
 	err = db.DB.Create(
 		&Collaboration{
@@ -523,6 +518,20 @@ func orgsRemoveMember(t *testing.T, db *organizations) {
 			RepoID: repo1.ID,
 		},
 	).Error
+	require.NoError(t, err)
+
+	permsStore := NewPermsStore(db.DB)
+	err = permsStore.SetRepoPerms(ctx, repo1.ID, map[int64]AccessMode{bob.ID: AccessModeRead})
+	require.NoError(t, err)
+	err = reposStore.Watch(
+		ctx,
+		WatchRepositoryOptions{
+			UserID:        bob.ID,
+			RepoID:        repo1.ID,
+			RepoOwnerID:   repo1.OwnerID,
+			RepoIsPrivate: repo1.IsPrivate,
+		},
+	)
 	require.NoError(t, err)
 
 	// Pull the trigger

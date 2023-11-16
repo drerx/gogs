@@ -305,11 +305,21 @@ func reposTouch(t *testing.T, db *repositories) {
 func reposListWatches(t *testing.T, db *repositories) {
 	ctx := context.Background()
 
-	err := db.Watch(ctx, 1, 1)
+	reposStore := NewRepositoriesStore(db.DB)
+	repo1, err := reposStore.Create(ctx, 1, CreateRepoOptions{Name: "repo1"})
 	require.NoError(t, err)
-	err = db.Watch(ctx, 2, 1)
+	_, err = reposStore.Create(ctx, 2, CreateRepoOptions{Name: "repo2"})
 	require.NoError(t, err)
-	err = db.Watch(ctx, 2, 2)
+
+	err = db.Watch(
+		ctx,
+		WatchRepositoryOptions{
+			UserID:        2,
+			RepoID:        repo1.ID,
+			RepoOwnerID:   repo1.OwnerID,
+			RepoIsPrivate: repo1.IsPrivate,
+		},
+	)
 	require.NoError(t, err)
 
 	got, err := db.ListWatches(ctx, 1)
@@ -329,19 +339,55 @@ func reposWatch(t *testing.T, db *repositories) {
 	ctx := context.Background()
 
 	reposStore := NewRepositoriesStore(db.DB)
-	repo1, err := reposStore.Create(ctx, 1, CreateRepoOptions{Name: "repo1"})
-	require.NoError(t, err)
 
-	err = db.Watch(ctx, 2, repo1.ID)
-	require.NoError(t, err)
+	t.Run("user does not have access to the repository", func(t *testing.T) {
+		repo1, err := reposStore.Create(ctx, 1, CreateRepoOptions{Name: "repo1", Private: true})
+		require.NoError(t, err)
 
-	// It is OK to watch multiple times and just be noop.
-	err = db.Watch(ctx, 2, repo1.ID)
-	require.NoError(t, err)
+		err = db.Watch(
+			ctx,
+			WatchRepositoryOptions{
+				UserID:        2,
+				RepoID:        repo1.ID,
+				RepoOwnerID:   repo1.OwnerID,
+				RepoIsPrivate: repo1.IsPrivate,
+			},
+		)
+		require.Error(t, err)
+	})
 
-	repo1, err = reposStore.GetByID(ctx, repo1.ID)
-	require.NoError(t, err)
-	assert.Equal(t, 2, repo1.NumWatches) // The owner is watching the repo by default.
+	t.Run("user has access to the repository", func(t *testing.T) {
+		repo2, err := reposStore.Create(ctx, 1, CreateRepoOptions{Name: "repo2"})
+		require.NoError(t, err)
+
+		err = db.Watch(
+			ctx,
+			WatchRepositoryOptions{
+				UserID:        2,
+				RepoID:        repo2.ID,
+				RepoOwnerID:   repo2.OwnerID,
+				RepoIsPrivate: repo2.IsPrivate,
+			},
+		)
+		require.NoError(t, err)
+
+		// It is OK to watch multiple times and just be noop.
+		err = db.Watch(
+			ctx,
+			WatchRepositoryOptions{
+				UserID:        2,
+				RepoID:        repo2.ID,
+				RepoOwnerID:   repo2.OwnerID,
+				RepoIsPrivate: repo2.IsPrivate,
+			},
+		)
+		require.NoError(t, err)
+
+		repo2, err = reposStore.GetByID(ctx, repo2.ID)
+		require.NoError(t, err)
+		assert.Equal(t, 2, repo2.NumWatches) // The owner is watching the repo by default.
+	})
+
 }
 
 func reposHasForkedBy(t *testing.T, db *repositories) {
