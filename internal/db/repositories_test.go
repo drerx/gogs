@@ -387,7 +387,6 @@ func reposWatch(t *testing.T, db *repositories) {
 		require.NoError(t, err)
 		assert.Equal(t, 2, repo2.NumWatches) // The owner is watching the repo by default.
 	})
-
 }
 
 func reposHasForkedBy(t *testing.T, db *repositories) {
