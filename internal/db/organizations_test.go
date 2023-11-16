@@ -47,6 +47,7 @@ func TestOrganizations(t *testing.T) {
 		{"DeleteByID", orgsDeleteByID},
 		{"AddMember", orgsAddMember},
 		{"RemoveMember", orgsRemoveMember},
+		{"HasMember", orgsHasMember},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Cleanup(func() {
@@ -559,4 +560,17 @@ func orgsRemoveMember(t *testing.T, db *organizations) {
 	gotOrg, err := db.GetByName(ctx, org1.Name)
 	require.NoError(t, err)
 	assert.Equal(t, 1, gotOrg.NumMembers)
+}
+
+func orgsHasMember(t *testing.T, db *organizations) {
+	ctx := context.Background()
+
+	got, _ := db.HasMember(ctx, 1, 1)
+	assert.False(t, got)
+
+	err := db.AddMember(ctx, 1, 1)
+	require.NoError(t, err)
+	
+	got, _ = db.HasMember(ctx, 1, 1)
+	assert.True(t, got)
 }
